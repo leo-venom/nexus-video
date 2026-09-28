@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>NEXUS VIDEO</title>
+<style>
+/* =========================================================
+   FONTES (mesmas do NEXUS MUSIC)
+========================================================= */
+@font-face{font-family:'Orbitron';src:url('/fonts/Orbitron-400.woff2') format('woff2');font-weight:400;font-style:normal;font-display:block;}
+@font-face{font-family:'Orbitron';src:url('/fonts/Orbitron-700.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block;}
+@font-face{font-family:'Rajdhani';src:url('/fonts/Rajdhani-400.woff2') format('woff2');font-weight:400;font-style:normal;font-display:block;}
+@font-face{font-family:'Rajdhani';src:url('/fonts/Rajdhani-600.woff2') format('woff2');font-weight:600;font-style:normal;font-display:block;}
+@font-face{font-family:'Rajdhani';src:url('/fonts/Rajdhani-700.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block;}
+
+/* =========================================================
+   BASE
+========================================================= */
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    -webkit-tap-highlight-color:transparent;
+}
+html,body{
+    height:100%;
+    overflow:hidden;
+    background:#000;
+    color:#fff;
+    font-family:'Rajdhani',Arial,sans-serif;
+    -webkit-user-select:none;
+    user-select:none;
+}
+/* textura: malha diamante do tema + brilhos */
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background-image:url('/img/fundo.jpg');
+    background-size:cover;
+    background-position:center top;
+    background-repeat:no-repeat;
+    pointer-events:none;
+    z-index:-1;
+}
+body::after{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:radial-gradient(circle at 15% 0%,rgba(255,255,255,.05),rgba(0,0,0,0) 40%),
+               linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.72));
+    pointer-events:none;
+    z-index:-1;
+}
+img{-webkit-user-drag:none;pointer-events:none;}
+
+/* =========================================================
+   APP
+========================================================= */
+.app{width:100%;height:100%;display:flex;flex-direction:column;}
+
+/* ---------------------------------------------------------
+   TOPO: logo + visor
+--------------------------------------------------------- */
+.topo{
+    flex:0 0 auto;
+    margin:10px 10px 0;
+    padding:10px 12px 12px;
+    background:rgba(0,0,0,.02);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    border-radius:24px 24px 0 0;
+}
+.topo-linha{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:8px;
+}
+.topo-logo{
+    font-family:'Orbitron',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    letter-spacing:2px;
+    color:#fff;
+    text-shadow:0 0 12px rgba(255,255,255,.45);
+}
+.topo-contagem{
+    font-family:'Orbitron',sans-serif;
+    font-size:10px;
+    letter-spacing:1px;
+    color:#e8e8e8;
+    background:rgba(7,7,7,.55);
+    border:1px solid rgba(255,255,255,.22);
+    border-radius:999px;
+    padding:3px 10px;
+}
+
+/* ---------------------------------------------------------
+   VISOR / PLAYER
+--------------------------------------------------------- */
+.visor{
+    position:relative;
+    width:100%;
+    aspect-ratio:16/9;
+    background:#050505;
+    border:1px solid rgba(255,255,255,.22);
+    border-radius:12px;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+.visor video{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    background:#000;
+    z-index:2;
+}
+#plexusCanvas{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    pointer-events:none;
+    z-index:1;
+}
+.visor-vazio{
+    position:relative;
+    z-index:0;
+    font-family:'Orbitron',sans-serif;
+    font-size:10px;
+    letter-spacing:2px;
+    color:rgba(255,255,255,.55);
+    text-align:center;
+    line-height:1.9;
+}
+.visor-info{
+    position:relative;
+    z-index:2;
+    margin-top:9px;
+    text-align:center;
+    min-height:34px;
+}
+.visor-titulo{
+    font-family:'Orbitron',sans-serif;
+    font-weight:700;
+    font-size:11px;
+    letter-spacing:.5px;
+    color:#fff;
+    text-shadow:0 0 10px rgba(0,0,0,.9);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+.visor-sub{
+    font-size:11px;
+    letter-spacing:1.5px;
+    color:rgba(255,255,255,.6);
+    margin-top:2px;
+}
+
+/* ---------------------------------------------------------
+   TRANSPORTE
+--------------------------------------------------------- */
+.transporte{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+    margin-top:9px;
+}
+.ctl{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,.55);
+    background:rgba(16,16,16,.90);
+    color:#fff;
+    font-size:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+}
+.ctl:active{opacity:.85;transform:scale(.96);}
+.ctl.principal{
+    width:50px;
+    height:50px;
+    font-size:17px;
+    border-color:rgba(255,255,255,.8);
+    box-shadow:0 0 16px rgba(255,255,255,.16);
+}
+.ctl:disabled{opacity:.4;}
+
+/* barra de tempo */
+.tempo-linha{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:10px;
+}
+.tempo-linha span{
+    font-family:'Orbitron',sans-serif;
+    font-size:9px;
+    color:#d4d4d4;
+    min-width:40px;
+    text-align:center;
+}
+.trilha{
+    position:relative;
+    flex:1;
+    height:5px;
+    background:rgba(255,255,255,.16);
+    border-radius:999px;
+    overflow:hidden;
+}
+.trilha-fill{
+    position:absolute;
+    left:0;top:0;bottom:0;
+    width:0%;
+    background:#fff;
+    border-radius:999px;
+    box-shadow:0 0 8px rgba(255,255,255,.6);
+}
+
+/* ---------------------------------------------------------
+   ABAS
+--------------------------------------------------------- */
+.abas{
+    display:flex;
+    gap:8px;
+    margin:12px 10px 0;
+}
+.aba{
+    flex:1;
+    height:34px;
+    border-radius:8px;
+    border:none;
+    background:
+        linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.045)) padding-box,
+        linear-gradient(135deg,#fff,#8a8a8a,#4a4a4a) border-box;
+    border:2px solid transparent;
+    color:#fff;
+    font-family:'Rajdhani',sans-serif;
+    font-weight:600;
+    font-size:11px;
+    letter-spacing:1.2px;
+    cursor:pointer;
+}
+.aba:active{opacity:.9;transform:scale(1.02);}
+.aba.ativa{
+    background:
+        linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.10)) padding-box,
+        linear-gradient(135deg,#fff,#fff,#8a8a8a) border-box;
+}
+
+/* ---------------------------------------------------------
+   CONTEÚDO
+--------------------------------------------------------- */
+.conteudo{
+    flex:1 1 auto;
+    overflow-y:auto;
+    overflow-x:hidden;
+    margin:8px 10px 0;
+    padding:10px 10px 74px;
+    background:rgba(0,0,0,.02);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    border-radius:0 0 24px 24px;
+    -webkit-overflow-scrolling:touch;
+}
+.conteudo::-webkit-scrollbar{width:0;}
+
+.painel{display:none;}
+.painel.ativo{display:block;}
+
+.contador{
+    display:block;
+    width:fit-content;
+    margin:0 auto 10px;
+    font-family:'Orbitron',sans-serif;
+    font-size:9px;
+    letter-spacing:1.5px;
+    color:#e8e8e8;
+    background:rgba(7,7,7,.55);
+    border:1px solid rgba(255,255,255,.22);
+    border-radius:999px;
+    padding:4px 12px;
+}
+
+/* grade de vídeos */
+.grade{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+}
+.vcard{
+    position:relative;
+    border-radius:16px;
+    overflow:hidden;
+    background:rgba(7,7,7,.34);
+    border:1px solid rgba(255,255,255,.18);
+    cursor:pointer;
+    aspect-ratio:1/1;
+}
+.vcard:active{transform:scale(.98);}
+.vcard-thumb{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
+.vcard-tempo{
+    position:absolute;
+    right:6px;bottom:6px;
+    font-family:'Orbitron',sans-serif;
+    font-size:8px;
+    padding:2px 6px;
+    border-radius:4px;
+    background:rgba(0,0,0,.78);
+    border:1px solid rgba(255,255,255,.25);
+}
+.vcard-nome{
+    position:absolute;
+    left:0;right:0;bottom:0;
+    padding:16px 7px 6px;
+    font-size:11px;
+    font-weight:600;
+    line-height:1.25;
+    background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.88));
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+}
+.vcard-res{
+    position:absolute;
+    left:6px;top:6px;
+    font-family:'Orbitron',sans-serif;
+    font-size:8px;
+    letter-spacing:.5px;
+    padding:2px 6px;
+    border-radius:4px;
+    background:rgba(0,0,0,.78);
+    border:1px solid rgba(255,255,255,.3);
+    color:#fff;
+}
+
+/* ---------------------------------------------------------
+   YOUTUBE
+--------------------------------------------------------- */
+.yt-titulo{
+    font-family:'Orbitron',sans-serif;
+    font-weight:700;
+    font-size:11px;
+    letter-spacing:2px;
+    text-align:center;
+    color:#fff;
+    margin-bottom:10px;
+    text-shadow:0 0 10px rgba(255,255,255,.25);
+}
+.yt-busca{
+    display:flex;
+    gap:7px;
+    margin-bottom:9px;
+}
+.yt-busca input{
+    flex:1;
+    height:38px;
+    padding:0 12px;
+    border-radius:8px;
+    border:1px solid rgba(255,255,255,.28);
+    background:rgba(10,10,10,.85);
+    color:#fff;
+    font-family:'Rajdhani',sans-serif;
+    font-size:14px;
+    outline:none;
+    -webkit-user-select:text;
+    user-select:text;
+}
+.yt-busca input::placeholder{color:rgba(255,255,255,.4);}
+.yt-busca button{
+    width:46px;
+    border-radius:8px;
+    border:none;
+    background:
+        linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.045)) padding-box,
+        linear-gradient(135deg,#fff,#8a8a8a,#4a4a4a) border-box;
+    border:2px solid transparent;
+    color:#fff;
+    font-size:15px;
+    cursor:pointer;
+}
+
+.yt-status{
+    min-height:18px;
+    font-size:11px;
+    letter-spacing:.4px;
+    color:rgba(255,255,255,.72);
+    margin-bottom:9px;
+    text-align:center;
+}
+.yt-status.ok{color:#b9ffcf;}
+.yt-status.erro{color:#ff9aa2;}
+
+/* resultados da busca */
+.yt-resultado{
+    display:flex;
+    gap:9px;
+    padding:8px;
+    margin-bottom:8px;
+    border-radius:10px;
+    background:rgba(7,7,7,.42);
+    border:1px solid rgba(255,255,255,.16);
+    cursor:pointer;
+}
+.yt-resultado:active{transform:scale(.99);}
+.yt-resultado-thumb{
+    position:relative;
+    flex:0 0 84px;
+    height:56px;
+    border-radius:7px;
+    overflow:hidden;
+    background:#0a0a0a;
+}
+.yt-resultado-thumb img{width:100%;height:100%;object-fit:cover;}
+.yt-resultado-dur{
+    position:absolute;
+    right:3px;bottom:3px;
+    font-family:'Orbitron',sans-serif;
+    font-size:7px;
+    padding:1px 4px;
+    border-radius:3px;
+    background:rgba(0,0,0,.82);
+}
+.yt-resultado-info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;}
+.yt-resultado-nome{
+    font-size:12px;
+    font-weight:600;
+    line-height:1.25;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+}
+.yt-resultado-canal{font-size:10px;color:rgba(255,255,255,.55);margin-top:2px;}
+
+/* QUALIDADES (opinião de cada uma) */
+.qualidades{
+    margin-top:4px;
+    padding:11px 10px 6px;
+    border-radius:12px;
+    background:rgba(7,7,7,.5);
+    border:1px solid rgba(255,255,255,.2);
+}
+.qualidades-cabecalho{
+    font-family:'Orbitron',sans-serif;
+    font-size:9px;
+    letter-spacing:1.5px;
+    color:#fff;
+    margin-bottom:3px;
+}
+.qualidades-aviso{
+    font-size:10.5px;
+    line-height:1.35;
+    color:rgba(255,255,255,.62);
+    margin-bottom:9px;
+}
+.qtabela{display:flex;flex-direction:column;gap:7px;}
+.qitem{
+    display:flex;
+    align-items:flex-start;
+    gap:9px;
+    padding:8px 9px;
+    border-radius:9px;
+    background:rgba(16,16,16,.85);
+    border:1px solid rgba(255,255,255,.16);
+    cursor:pointer;
+    text-align:left;
+    width:100%;
+    color:#fff;
+}
+.qitem:active{transform:scale(.99);}
+.qitem.recomendada{border-color:rgba(255,255,255,.55);box-shadow:0 0 12px rgba(255,255,255,.12);}
+.qitem-res{
+    flex:0 0 auto;
+    font-family:'Orbitron',sans-serif;
+    font-weight:700;
+    font-size:12px;
+    min-width:48px;
+    color:#fff;
+}
+.qitem-corpo{flex:1;min-width:0;}
+.qitem-nota{font-size:10.5px;line-height:1.32;color:rgba(255,255,255,.72);}
+.qtag{
+    display:inline-block;
+    font-family:'Orbitron',sans-serif;
+    font-size:7.5px;
+    letter-spacing:.6px;
+    padding:2px 6px;
+    border-radius:4px;
+    margin-top:4px;
+    margin-right:4px;
+    border:1px solid rgba(255,255,255,.3);
+}
+.qtag.pronta{background:rgba(255,255,255,.16);}
+.qtag.juntar{background:rgba(255,255,255,.08);}
+.qtag.recomendada{background:#fff;color:#000;border-color:#fff;}
+
+/* progresso do download */
+.yt-progresso{
+    margin-top:10px;
+    padding:10px;
+    border-radius:10px;
+    background:rgba(7,7,7,.5);
+    border:1px solid rgba(255,255,255,.2);
+}
+.yt-progresso-info{
+    display:flex;
+    justify-content:space-between;
+    font-size:10.5px;
+    margin-bottom:6px;
+    color:rgba(255,255,255,.8);
+}
+.yt-barra{
+    height:6px;
+    border-radius:999px;
+    background:rgba(255,255,255,.16);
+    overflow:hidden;
+}
+.yt-barra-fill{
+    height:100%;
+    width:0%;
+    background:#fff;
+    border-radius:999px;
+    box-shadow:0 0 8px rgba(255,255,255,.6);
+    transition:width .25s;
+}
+
+/* ---------------------------------------------------------
+   RODAPÉ
+--------------------------------------------------------- */
+.rodape{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:7px 16px calc(7px + env(safe-area-inset-bottom));
+    background:rgba(5,5,5,.72);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    border-top:1px solid rgba(255,255,255,.12);
+}
+.rodape-marca{
+    font-family:'Orbitron',sans-serif;
+    font-size:9px;
+    letter-spacing:2px;
+    color:rgba(255,255,255,.7);
+}
+.rodape-autor{font-size:10px;letter-spacing:1px;color:rgba(255,255,255,.5);}
+
+/* aviso flutuante */
+.aviso{
+    position:fixed;
+    left:50%;
+    bottom:74px;
+    transform:translateX(-50%);
+    max-width:88%;
+    padding:9px 15px;
+    border-radius:999px;
+    background:rgba(0,0,0,.9);
+    border:1px solid rgba(255,255,255,.3);
+    font-size:11px;
+    text-align:center;
+    z-index:50;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .25s;
+}
+.aviso.mostra{opacity:1;}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+    <!-- ===================== TOPO ===================== -->
+    <div class="topo">
+        <div class="topo-linha">
+            <div class="topo-logo">NEXUS VIDEO</div>
+            <div class="topo-contagem" id="contagem">000 VÍDEOS</div>
+        </div>
+
+        <div class="visor" id="visor">
+            <video id="player" playsinline preload="metadata"></video>
+            <canvas id="plexusCanvas" aria-hidden="true"></canvas>
+            <div class="visor-vazio" id="visorVazio">NENHUM VÍDEO<br>SELECIONE UM VÍDEO</div>
+        </div>
+
+        <div class="visor-info">
+            <div class="visor-titulo" id="visorTitulo">NENHUM VÍDEO</div>
+            <div class="visor-sub" id="visorSub">NEXUS VIDEO</div>
+        </div>
+
+        <div class="transporte">
+            <button class="ctl" id="btnAnterior" title="Anterior">◀</button>
+            <button class="ctl principal" id="btnPlay" title="Tocar">▶</button>
+            <button class="ctl" id="btnProximo" title="Próximo">▶</button>
+        </div>
+
+        <div class="tempo-linha">
+            <span id="tempoAtual">0:00</span>
+            <div class="trilha" id="trilha"><div class="trilha-fill" id="trilhaFill"></div></div>
+            <span id="tempoTotal">0:00</span>
+        </div>
+    </div>
+
+    <!-- ===================== ABAS ===================== -->
+    <div class="abas">
+        <button class="aba ativa" id="abaBiblioteca">VÍDEOS</button>
+        <button class="aba" id="abaYouTube">YOUTUBE</button>
+    </div>
+
+    <!-- ===================== CONTEÚDO ===================== -->
+    <div class="conteudo" id="conteudo">
+
+        <!-- ---------- biblioteca ---------- -->
+        <div class="painel ativo" id="painelBiblioteca">
+            <span class="contador" id="contadorBiblioteca">0 VÍDEOS</span>
+            <div class="grade" id="grade"></div>
+        </div>
+
+        <!-- ---------- youtube ---------- -->
+        <div class="painel" id="painelYouTube">
+            <div class="yt-titulo">YOUTUBE DOWNLOAD</div>
+
+            <div class="yt-busca">
+                <input id="ytTermo" type="text" placeholder="Nome ou link do vídeo"
+                       autocomplete="off" autocorrect="off" spellcheck="false">
+                <button id="ytBuscar" title="Pesquisar">⌕</button>
+            </div>
+
+            <div class="yt-status" id="ytStatus">Pesquise um vídeo para ver as qualidades</div>
+
+            <div id="ytResultados"></div>
+
+            <div id="ytQualidades"></div>
+
+            <div class="yt-progresso" id="ytProgresso" hidden>
+                <div class="yt-progresso-info">
+                    <span id="ytEtapa">baixando…</span>
+                    <span id="ytPct">0%</span>
+                </div>
+                <div class="yt-barra"><div class="yt-barra-fill" id="ytBarraFill"></div></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ===================== RODAPÉ ===================== -->
+    <div class="rodape">
+        <span class="rodape-marca">NEXUS VIDEO</span>
+        <span class="rodape-autor">BY: LEANDRO</span>
+    </div>
+</div>
+
+<div class="aviso" id="aviso"></div>
+
+<script>
+/* =========================================================
+   ESTADO
+========================================================= */
+let lib={total:0,videos:[],pastas:[]};
+let fila=[];
+let indiceFila=-1;
+let buscaResultados=[];
+let videoSelecionado=null;
+let ytPollTimer=null;
+const player=document.getElementById('player');
+
+const $=id=>document.getElementById(id);
+
+/* =========================================================
+   AVISO NA TELA
+========================================================= */
+let avisoTimer=null;
+function avisar(txt,ms){
+    const el=$('aviso');
+    el.textContent=txt;
+    el.classList.add('mostra');
+    if(avisoTimer)clearTimeout(avisoTimer);
+    avisoTimer=setTimeout(()=>el.classList.remove('mostra'),ms||2200);
+}
+
+/* =========================================================
+   UTILIDADES
+========================================================= */
+function fmtTempo(s){
+    if(!isFinite(s)||s<0)s=0;
+    const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),seg=Math.floor(s%60);
+    if(h>0)return h+':'+String(m).padStart(2,'0')+':'+String(seg).padStart(2,'0');
+    return m+':'+String(seg).padStart(2,'0');
+}
+function escaparHtml(t){
+    return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtTamanho(bytes){
+    if(!bytes||bytes<=0)return '';
+    const mb=bytes/(1024*1024);
+    if(mb>=1024)return (mb/1024).toFixed(1)+' GB';
+    return Math.round(mb)+' MB';
+}
+
+/* =========================================================
+   BIBLIOTECA
+========================================================= */
+async function carregarBiblioteca(){
+    try{
+        const r=await fetch('/api/library?t='+Date.now());
+        lib=await r.json();
+    }catch(e){return;}
+    $('contagem').textContent=String(lib.total).padStart(3,'0')+' VÍDEOS';
+    $('contadorBiblioteca').textContent=lib.total+(lib.total===1?' VÍDEO':' VÍDEOS');
+    renderGrade();
+}
+
+function renderGrade(){
+    const g=$('grade');
+    if(!lib.videos.length){
+        g.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:28px 10px;'
+            +'color:rgba(255,255,255,.5);font-size:12px;line-height:1.7">'
+            +'Nenhum vídeo encontrado.<br>Baixe pelo YouTube ou coloque vídeos em Movies/NexusVideo</div>';
+        return;
+    }
+    g.innerHTML=lib.videos.map((v,i)=>{
+        const res=(v.largura>0&&v.altura>0)?(v.altura+'p'):'';
+        return '<article class="vcard" data-i="'+i+'">'
+            +'<img class="vcard-thumb" loading="lazy" src="/thumb/'+v.id+'" alt="" '
+            +'onerror="this.style.display=\'none\'">'
+            +(res?'<span class="vcard-res">'+res+'</span>':'')
+            +'<span class="vcard-tempo">'+fmtTempo(v.duracao)+'</span>'
+            +'<span class="vcard-nome">'+escaparHtml(v.nome)+'</span>'
+            +'</article>';
+    }).join('');
+    g.querySelectorAll('.vcard').forEach(c=>{
+        c.onclick=()=>tocarDaLista(parseInt(c.dataset.i,10));
+    });
+}
+
+function tocarDaLista(i){
+    fila=lib.videos.slice();
+    indiceFila=i;
+    tocarIndice();
+}
+
+function tocarIndice(){
+    const v=fila[indiceFila];
+    if(!v)return;
+    videoSelecionado=v;
+    player.src=v.url;
+    player.play().catch(()=>atualizarBotaoPlay(false));
+    atualizarBotaoPlay(true);
+    $('visorVazio').style.display='none';
+    $('visorTitulo').textContent=v.nome.replace(/\.[^.]+$/,'');
+    const res=(v.largura>0&&v.altura>0)?(' · '+v.altura+'p'):'';
+    $('visorSub').textContent='NEXUS VIDEO'+res;
+    dispararPlexus();
+}
+
+function atualizarBotaoPlay(tocando){
+    $('btnPlay').textContent=tocando?'❚❚':'▶';
+}
+
+$('btnPlay').onclick=()=>{
+    if(!videoSelecionado){avisar('selecione um vídeo');return;}
+    if(player.paused){player.play().catch(()=>{});atualizarBotaoPlay(true);}
+    else{player.pause();atualizarBotaoPlay(false);}
+};
+$('btnAnterior').onclick=()=>{
+    if(indiceFila>0){indiceFila--;tocarIndice();}
+};
+$('btnProximo').onclick=()=>{
+    if(indiceFila<fila.length-1){indiceFila++;tocarIndice();}
+};
+
+player.addEventListener('timeupdate',()=>{
+    $('tempoAtual').textContent=fmtTempo(player.currentTime);
+    if(player.duration&&isFinite(player.duration)){
+        $('trilhaFill').style.width=(player.currentTime/player.duration*100)+'%';
+    }
+});
+player.addEventListener('loadedmetadata',()=>{
+    $('tempoTotal').textContent=fmtTempo(player.duration);
+});
+player.addEventListener('play',()=>atualizarBotaoPlay(true));
+player.addEventListener('pause',()=>atualizarBotaoPlay(false));
+player.addEventListener('ended',()=>{
+    atualizarBotaoPlay(false);
+    if(indiceFila<fila.length-1){indiceFila++;tocarIndice();}
+});
+
+/* clicar na trilha salta no vídeo */
+$('trilha').onclick=e=>{
+    if(!player.duration||!isFinite(player.duration))return;
+    const r=$('trilha').getBoundingClientRect();
+    const p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+    player.currentTime=p*player.duration;
+};
+
+/* =========================================================
+   ABAS
+========================================================= */
+function trocarAba(qual){
+    const bib=qual==='biblioteca';
+    $('abaBiblioteca').classList.toggle('ativa',bib);
+    $('abaYouTube').classList.toggle('ativa',!bib);
+    $('painelBiblioteca').classList.toggle('ativo',bib);
+    $('painelYouTube').classList.toggle('ativo',!bib);
+    $('conteudo').scrollTop=0;
+}
+$('abaBiblioteca').onclick=()=>trocarAba('biblioteca');
+$('abaYouTube').onclick=()=>trocarAba('youtube');
+
+/* =========================================================
+   YOUTUBE — PESQUISA
+========================================================= */
+function ytStatus(txt,tipo){
+    const el=$('ytStatus');
+    el.textContent=txt;
+    el.className='yt-status'+(tipo?' '+tipo:'');
+}
+
+$('ytBuscar').onclick=()=>pesquisar();
+$('ytTermo').addEventListener('keydown',e=>{if(e.key==='Enter')pesquisar();});
+
+const RE_LINK=/https?:\/\/[^\s]*(youtube\.com|youtu\.be)[^\s]*/i;
+
+async function pesquisar(){
+    const bruto=$('ytTermo').value.trim();
+    if(!bruto){ytStatus('digite o nome do vídeo','erro');return;}
+
+    /* se colou um link, vai direto para as qualidades */
+    const link=bruto.match(RE_LINK);
+    if(link){abrirQualidades(link[0]);return;}
+
+    ytStatus('pesquisando…');
+    $('ytResultados').innerHTML='';
+    $('ytQualidades').innerHTML='';
+    try{
+        const r=await fetch('/api/youtube/search?q='+encodeURIComponent(bruto));
+        const d=await r.json();
+        if(!r.ok||!d.ok){ytStatus(d.erro||'não foi possível pesquisar','erro');return;}
+        buscaResultados=d.resultados||[];
+        renderResultados();
+        ytStatus(buscaResultados.length
+            ? 'toque num vídeo para ver as qualidades de download'
+            : 'nenhum resultado encontrado');
+    }catch(e){
+        ytStatus('erro de rede na pesquisa','erro');
+    }
+}
+
+function renderResultados(){
+    $('ytResultados').innerHTML=buscaResultados.map((v,i)=>
+        '<div class="yt-resultado" data-i="'+i+'">'
+        +'<div class="yt-resultado-thumb">'
+        +(v.capa?'<img loading="lazy" src="'+escaparHtml(v.capa)+'" alt="">':'')
+        +(v.duracao?'<span class="yt-resultado-dur">'+escaparHtml(v.duracao)+'</span>':'')
+        +'</div>'
+        +'<div class="yt-resultado-info">'
+        +'<div class="yt-resultado-nome">'+escaparHtml(v.titulo)+'</div>'
+        +'<div class="yt-resultado-canal">'+escaparHtml(v.canal)+'</div>'
+        +'</div></div>').join('');
+    $('ytResultados').querySelectorAll('.yt-resultado').forEach(el=>{
+        el.onclick=()=>abrirQualidades(buscaResultados[parseInt(el.dataset.i,10)].url);
+    });
+}
+
+/* =========================================================
+   YOUTUBE — QUALIDADES (a "opinião" de cada opção)
+========================================================= */
+async function abrirQualidades(url){
+    $('ytQualidades').innerHTML='';
+    $('ytProgresso').hidden=true;
+    ytStatus('lendo as qualidades disponíveis…');
+    try{
+        const r=await fetch('/api/youtube/qualidades',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({url:url})
+        });
+        const d=await r.json();
+        if(!r.ok||!d.ok){ytStatus(d.erro||'não foi possível ler as qualidades','erro');return;}
+
+        ytStatus('');
+        renderQualidades(d,url);
+    }catch(e){
+        ytStatus('erro de rede ao ler as qualidades','erro');
+    }
+}
+
+function renderQualidades(d,url){
+    const aviso=String(d.recomendada||'')?
+        ('O app recomenda <b>'+escaparHtml(d.recomendada)+'</b>. '+
+         'Só o 360p já vem com áudio no mesmo arquivo; as resoluções acima vêm em '+
+         'duas partes e são juntadas no fim do download.'):
+        'Este vídeo não ofereceu opções de download.';
+
+    const itens=(d.opcoes||[]).map(o=>{
+        const pronta=o.tipo==='direta';
+        const tag=pronta
+            ? '<span class="qtag pronta">COM ÁUDIO · ARQUIVO ÚNICO</span>'
+            : '<span class="qtag juntar">VÍDEO + ÁUDIO · JUNTA NO FIM</span>';
+        const rec=o.recomendada?'<span class="qtag recomendada">RECOMENDADA</span>':'';
+        return '<button class="qitem'+(o.recomendada?' recomendada':'')+'" data-rot="'
+            +escaparHtml(o.rotulo)+'">'
+            +'<span class="qitem-res">'+escaparHtml(o.rotulo)+'</span>'
+            +'<span class="qitem-corpo">'
+            +'<span class="qitem-nota">'+escaparHtml(o.nota)+'</span><br>'
+            +tag+rec
+            +'</span></button>';
+    }).join('');
+
+    $('ytQualidades').innerHTML=
+        '<div class="qualidades">'
+        +'<div class="qualidades-cabecalho">QUALIDADES DISPONÍVEIS</div>'
+        +'<div class="qualidades-aviso">'
+        +escaparHtml(d.titulo||'')+(d.duracao?(' · '+escaparHtml(d.duracao)):'')+'<br>'
+        +aviso+'</div>'
+        +'<div class="qtabela">'+itens+'</div></div>';
+
+    $('ytQualidades').querySelectorAll('.qitem').forEach(el=>{
+        el.onclick=()=>baixar(url,el.dataset.rot);
+    });
+}
+
+/* =========================================================
+   YOUTUBE — DOWNLOAD
+========================================================= */
+async function baixar(url,qualidade){
+    $('ytProgresso').hidden=false;
+    $('ytEtapa').textContent='preparando…';
+    $('ytPct').textContent='0%';
+    $('ytBarraFill').style.width='0%';
+    ytStatus('iniciando download…');
+
+    try{
+        const r=await fetch('/api/youtube',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({url:url,qualidade:qualidade})
+        });
+        const d=await r.json();
+        if(!r.ok||!d.ok){ytStatus(d.erro||'não foi possível iniciar','erro');
+            $('ytProgresso').hidden=true;return;}
+        acompanhar();
+    }catch(e){
+        ytStatus('erro de rede ao iniciar','erro');
+        $('ytProgresso').hidden=true;
+    }
+}
+
+function acompanhar(){
+    if(ytPollTimer)clearInterval(ytPollTimer);
+    ytPollTimer=setInterval(async()=>{
+        let d;
+        try{
+            const r=await fetch('/api/youtube/status?t='+Date.now());
+            d=await r.json();
+        }catch(e){return;}
+
+        const pct=Math.max(0,Math.min(100,d.percentual||0));
+        $('ytBarraFill').style.width=pct+'%';
+        $('ytPct').textContent=Math.round(pct)+'%';
+        if(d.etapa)$('ytEtapa').textContent=d.etapa;
+        else if(d.fase)$('ytEtapa').textContent=d.fase;
+
+        if(d.fase==='concluido'){
+            clearInterval(ytPollTimer);ytPollTimer=null;
+            $('ytProgresso').hidden=true;
+            ytStatus(d.mensagem||'download concluído','ok');
+            avisar('vídeo baixado');
+            await carregarBiblioteca();
+            return;
+        }
+        if(d.fase==='erro'||d.fase==='cancelado'){
+            clearInterval(ytPollTimer);ytPollTimer=null;
+            $('ytProgresso').hidden=true;
+            ytStatus('✖ '+(d.erro||d.fase),'erro');
+            return;
+        }
+    },700);
+}
+
+/* =========================================================
+   PLEXUS NO VISOR (mesmo efeito do NEXUS MUSIC)
+   Pontos colidem com as paredes do visor e com a área central.
+========================================================= */
+(function(){
+    const canvas=$('plexusCanvas');
+    const visor=$('visor');
+    const ctx=canvas&&canvas.getContext('2d');
+    if(!canvas||!visor||!ctx)return;
+
+    const PONTOS=20, DIST=110, VEL=0.42;
+    let pts=[], largura=0, altura=0, dpr=1, raf=null;
+
+    function dimensionar(){
+        const r=canvas.getBoundingClientRect();
+        dpr=Math.min(window.devicePixelRatio||1,2);
+        largura=r.width;altura=r.height;
+        if(!largura||!altura)return;
+        canvas.width=Math.round(largura*dpr);
+        canvas.height=Math.round(altura*dpr);
+        ctx.setTransform(dpr,0,0,dpr,0,0);
+        reiniciar();
+    }
+    function reiniciar(){
+        pts=[];
+        for(let i=0;i<PONTOS;i++){
+            const a=Math.random()*Math.PI*2;
+            pts.push({x:Math.random()*largura,y:Math.random()*altura,
+                vx:Math.cos(a)*VEL,vy:Math.sin(a)*VEL,
+                r:0.7+Math.random()*0.9});
+        }
+    }
+    function atualizar(){
+        for(const p of pts){
+            p.x+=p.vx;p.y+=p.vy;
+            if(p.x<=p.r){p.x=p.r;p.vx=Math.abs(p.vx);}
+            else if(p.x>=largura-p.r){p.x=largura-p.r;p.vx=-Math.abs(p.vx);}
+            if(p.y<=p.r){p.y=p.r;p.vy=Math.abs(p.vy);}
+            else if(p.y>=altura-p.r){p.y=altura-p.r;p.vy=-Math.abs(p.vy);}
+        }
+    }
+    function desenhar(){
+        ctx.clearRect(0,0,largura,altura);
+        atualizar();
+        const n=pts.length;
+        for(let i=0;i<n;i++){
+            const a=pts[i];
+            for(let j=i+1;j<n;j++){
+                const b=pts[j];
+                const dx=a.x-b.x,dy=a.y-b.y;
+                const d=Math.sqrt(dx*dx+dy*dy);
+                if(d>=DIST)continue;
+                ctx.beginPath();
+                ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+                ctx.strokeStyle='rgba(255,255,255,'+((1-d/DIST)*0.45).toFixed(3)+')';
+                ctx.lineWidth=0.7;ctx.stroke();
+            }
+        }
+        for(const p of pts){
+            ctx.beginPath();
+            ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+            ctx.fillStyle='rgba(255,255,255,.95)';ctx.fill();
+        }
+    }
+    function animar(){
+        if(document.hidden){raf=null;return;}
+        desenhar();
+        raf=requestAnimationFrame(animar);
+    }
+    window.dispararPlexus=function(){};
+    window.addEventListener('resize',()=>{dimensionar();},{passive:true});
+    document.addEventListener('visibilitychange',()=>{
+        if(document.hidden){if(raf!==null){cancelAnimationFrame(raf);raf=null;}}
+        else if(raf===null)raf=requestAnimationFrame(animar);
+    });
+    dimensionar();
+    raf=requestAnimationFrame(animar);
+})();
+
+/* =========================================================
+   PONTES DO APP
+========================================================= */
+window.nxPronto=function(){carregarBiblioteca();};
+window.nxAvisoVoltar=function(){avisar('toque em voltar de novo para sair');};
+window.nxLinkRecebido=function(texto){
+    const m=String(texto||'').match(RE_LINK);
+    if(!m)return;
+    trocarAba('youtube');
+    $('ytTermo').value=m[0];
+    abrirQualidades(m[0]);
+};
+
+/* volta do app: recarrega a biblioteca (um download pode ter terminado) */
+document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden)carregarBiblioteca();
+});
+
+carregarBiblioteca();
+</script>
+</body>
+</html>

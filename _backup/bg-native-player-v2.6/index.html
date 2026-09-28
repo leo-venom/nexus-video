@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>NEXUS VIDEO</title>
+<style>
+/* =========================================================
+   FONTES (mesmas do NEXUS MUSIC)
+========================================================= */
+@font-face{font-family:'Orbitron';src:url('/fonts/Orbitron-400.woff2') format('woff2');font-weight:400;font-style:normal;font-display:block;}
+@font-face{font-family:'Orbitron';src:url('/fonts/Orbitron-700.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block;}
+@font-face{font-family:'Rajdhani';src:url('/fonts/Rajdhani-400.woff2') format('woff2');font-weight:400;font-style:normal;font-display:block;}
+@font-face{font-family:'Rajdhani';src:url('/fonts/Rajdhani-600.woff2') format('woff2');font-weight:600;font-style:normal;font-display:block;}
+@font-face{font-family:'Rajdhani';src:url('/fonts/Rajdhani-700.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block;}
+
+/* =========================================================
+   BASE
+========================================================= */
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    -webkit-tap-highlight-color:transparent;
+}
+html,body{
+    height:100%;
+    overflow:hidden;
+    color:#fff;
+    font-family:'Rajdhani',Arial,sans-serif;
+    -webkit-user-select:none;
+    user-select:none;
+}
+/* Textura do fundo no <html>. Um body::before com z-index:-1 ficaria ATRÁS do
+   background do body e nunca apareceria — o body precisa ser TRANSPARENTE
+   para a imagem do html aparecer. */
+html{
+    background:#000 url('/img/fundo.jpg') center top / cover no-repeat;
+}
+body{background:transparent;}
+body::before{content:none;}
+body::after{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:radial-gradient(circle at 12% 0%,rgba(255,47,158,.12),rgba(0,0,0,0) 42%),
+               radial-gradient(circle at 88% 100%,rgba(43,255,168,.10),rgba(0,0,0,0) 46%),
+               linear-gradient(180deg,rgba(0,0,0,.10),rgba(0,0,0,.34));
+    pointer-events:none;
+    z-index:-1;
+}
+img{-webkit-user-drag:none;pointer-events:none;}
+
+/* =========================================================
+   APP
+========================================================= */
+.app{width:100%;height:100%;display:flex;flex-direction:column;}
+
+/* ---------------------------------------------------------
+   TOPO: logo + visor
+--------------------------------------------------------- */
+.topo{
+    flex:0 0 auto;
+    margin:10px 10px 0;
+    padding:10px 12px 12px;
+    background:rgba(0,0,0,.02);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    border-radius:24px 24px 0 0;
+}
+/* Com o vídeo rodando o desfoque do painel custa ~40% dos quadros (o WebView
+   refaz o blur a cada frame do <video>). O painel fica idêntico com o vídeo
+   parado; durante a reprodução o blur sai só para não derrubar o FPS. */
+.topo.tocando{
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
+}
+.topo-linha{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin-bottom:8px;
+}
+.topo-logo{
+    font-family:'Orbitron',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    letter-spacing:2px;
+    color:transparent;
+    background:linear-gradient(90deg,#ff2f9e,#2bffa8);
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 8px rgba(255,47,158,.45));
+}
+
+/* ---------------------------------------------------------
+   VISOR / PLAYER
+--------------------------------------------------------- */
+.visor{
+    position:relative;
+    width:100%;
+    aspect-ratio:16/9;
+    background:
+        linear-gradient(#050505,#050505) padding-box,
+        linear-gradient(135deg,#ff2f9e,#2bffa8) border-box;
+    border:1px solid transparent;
+    border-radius:12px;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+.visor video{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    background:#000;
+    z-index:2;
+}
+/* Arte fixa cobre quadros cinza/preto durante a troca de vídeo. O fade-out
+   começa somente depois que um quadro real do novo vídeo foi apresentado. */
+.visor-poster{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    background:#000;
+    z-index:3;
+    opacity:1;
+    pointer-events:none;
+    transition:opacity .36s ease;
+}
+.visor-poster.desvanecer{opacity:0;}
+.visor-poster[hidden]{display:none;}
+.visor-vazio{
+    position:relative;
+    z-index:0;
+    font-family:'Orbitron',sans-serif;
+    font-size:10px;
+    letter-spacing:2px;
+    color:rgba(150,255,215,.58);
+    text-align:center;
+    line-height:1.9;
+}
+.visor-info{
+    position:relative;
+    z-index:2;
+    margin-top:9px;
+    text-align:center;
+    min-height:34px;
+}
+.visor-titulo{
+    font-family:'Orbitron',sans-serif;
+    font-weight:700;
+    font-size:11px;
+    letter-spacing:.5px;
+    color:#fff;
+    text-shadow:0 0 10px rgba(0,0,0,.9);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+.visor-sub{
+    font-size:11px;
+    letter-spacing:1.5px;
+    color:rgba(150,255,215,.62);
+    margin-top:2px;
+}
+
+/* ---------------------------------------------------------
+   TRANSPORTE
+--------------------------------------------------------- */
+.transporte{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+    margin-top:9px;
+}
+.ctl{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    border:1px solid transparent;
+    background:
+        linear-gradient(rgba(16,16,16,.30),rgba(16,16,16,.30)) padding-box,
+        linear-gradient(135deg,#ff2f9e,#2bffa8) border-box;
+    backdrop-filter:blur(7px);
+    -webkit-backdrop-filter:blur(7px);
+    color:#fff;
+    font-size:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+}
+.ctl:active{opacity:.85;transform:scale(.96);}
+.ctl.principal{
+    width:50px;
+    height:50px;
+    font-size:17px;
+    border-color:transparent;
+    box-shadow:0 0 18px rgba(255,47,158,.38),0 0 30px rgba(43,255,168,.22);
+}
+.ctl:disabled{opacity:.4;}
+
+/* barra de tempo */
+.tempo-linha{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:10px;
+}
+.tempo-linha span{
+    font-family:'Orbitron',sans-serif;
+    font-size:9px;
+    color:#d4d4d4;
+    min-width:40px;
+    text-align:center;
+}
+.trilha{
+    position:relative;
+    flex:1;
+    height:32px;
+    background:transparent;
+    border-radius:999px;
+    overflow:visible;
+    cursor:pointer;
+    touch-action:none;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+}
+.trilha::before{
+    content:'';
+    position:absolute;
+    left:0;right:0;top:50%;
+    height:10px;
+    transform:translateY(-50%);
+    background:rgba(255,255,255,.16);
+    border-radius:999px;
+}
+.trilha-fill{
+    position:absolute;
+    left:0;top:50%;
+    height:10px;
+    width:0%;
+    transform:translateY(-50%);
+    background:linear-gradient(90deg,#ff2f9e,#2bffa8);
+    border-radius:999px;
+    box-shadow:0 0 10px rgba(43,255,168,.5),0 0 16px rgba(255,47,158,.32);
+    pointer-events:none;
+}
+.tempo-linha .trilha-bolinha{
+    position:absolute;
+    left:100%;top:50%;
+    width:16px;height:16px;
+    min-width:0;
+    padding:0;
+    box-sizing:border-box;
+    transform:translate(-50%,-50%);
+    border:2px solid #fff;
+    border-radius:50%;
+    background:linear-gradient(135deg,#ff2f9e,#2bffa8);
+    box-shadow:0 0 8px rgba(43,255,168,.75),0 0 14px rgba(255,47,158,.45);
+    font-size:0;
+    line-height:0;
+}
+
+/* ---------------------------------------------------------
+   ABAS
+--------------------------------------------------------- */
+.abas{
+    display:flex;
+    gap:8px;
+    margin:12px 10px 0;
+}
+.aba{
+    flex:1;
+    height:36px;
+    border-radius:9px;
+    background:
+        linear-gradient(#000,#000) padding-box,
+        linear-gradient(135deg,#ff2f9e,#2bffa8) border-box;
+    color:#fff;
+    border:2px solid transparent;
+    font-family:'Rajdhani',sans-serif;
+    font-weight:700;
+    font-size:12px;
+    letter-spacing:1.4px;
+    cursor:pointer;
+}
+.aba:active{background:linear-gradient(#000,#000) padding-box,linear-gradient(135deg,#ff2f9e,#2bffa8) border-box;transform:scale(.99);}
+.aba.ativa{background:linear-gradient(#000,#000) padding-box,linear-gradient(135deg,#ff2f9e,#2bffa8) border-box;color:#fff;border-color:transparent;}
+.aba:disabled{opacity:.45;cursor:default;}
+
+/* ---------------------------------------------------------
+   CONTEÚDO
+--------------------------------------------------------- */
+.conteudo{
+    flex:1 1 auto;
+    overflow-y:auto;
+    overflow-x:hidden;
+    margin:8px 10px 0;
+    padding:10px 10px 74px;
+    background:rgba(0,0,0,.02);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    border-radius:0 0 24px 24px;
+    -webkit-overflow-scrolling:touch;
+}
+.conteudo::-webkit-scrollbar{width:0;}
+
+.painel{display:none;}
+.painel.ativo{display:block;}
+
+/* grade de vídeos */
+.grade{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+}
+.vcard{
+    position:relative;
+    border-radius:16px;
+    overflow:hidden;
+    background:
+        linear-gradient(rgba(7,7,7,.34),rgba(7,7,7,.34)) padding-box,
+        linear-gradient(135deg,rgba(255,47,158,.75),rgba(43,255,168,.7)) border-box;
+    border:1px solid transparent;
+    cursor:pointer;
+    aspect-ratio:1/1;
+}
+.vcard:active{transform:scale(.98);}
+.vcard-thumb{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
+.vcard-tempo{
+    position:absolute;
+    right:6px;bottom:6px;
+    font-family:'Orbitron',sans-serif;
+    font-size:8px;
+    padding:2px 6px;
+    border-radius:4px;
+    background:rgba(0,0,0,.78);
+    border:1px solid rgba(43,255,168,.45);
+}
+.vcard-nome{
+    position:absolute;
+    left:0;right:0;bottom:0;
+    padding:16px 7px 6px;
+    font-size:11px;
+    font-weight:600;
+    line-height:1.25;
+    background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.88));
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+}
+.vcard-res{
+    position:absolute;
+    left:6px;top:6px;
+    font-family:'Orbitron',sans-serif;
+    font-size:8px;
+    letter-spacing:.5px;
+    padding:2px 6px;
+    border-radius:4px;
+    background:rgba(0,0,0,.78);
+    border:1px solid rgba(255,47,158,.55);
+    color:#fff;
+}
+
+/* ---------------------------------------------------------
+   YOUTUBE
+--------------------------------------------------------- */
+.yt-titulo{
+    font-family:'Orbitron',sans-serif;
+    font-weight:700;
+    font-size:11px;
+    letter-spacing:2px;
+    text-align:center;
+    color:transparent;
+    background:linear-gradient(90deg,#ff2f9e,#2bffa8);
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+    margin-bottom:10px;
+}
+.yt-busca{
+    display:flex;
+    gap:7px;
+    margin-bottom:9px;
+}
+.yt-busca input{
+    flex:1;
+    height:38px;
+    padding:0 12px;
+    border-radius:8px;
+    border:1px solid rgba(43,255,168,.45);
+    background:rgba(10,10,10,.85);
+    color:#fff;
+    font-family:'Rajdhani',sans-serif;
+    font-size:14px;
+    outline:none;
+    -webkit-user-select:text;
+    user-select:text;
+}
+.yt-busca input::placeholder{color:rgba(255,255,255,.4);}
+.yt-busca button{
+    width:46px;
+    border-radius:8px;
+    border:none;
+    background:
+        linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02)) padding-box,
+        linear-gradient(135deg,#ff2f9e,#2bffa8) border-box;
+    border:2px solid transparent;
+    color:rgba(255,255,255,.85);
+    font-size:15px;
+    cursor:pointer;
+}
+
+.yt-status{
+    min-height:18px;
+    font-size:11px;
+    letter-spacing:.4px;
+    color:rgba(255,255,255,.72);
+    margin-bottom:9px;
+    text-align:center;
+}
+.yt-status.ok{color:#2bffa8;}
+.yt-status.erro{color:#ff4f9e;}
+
+/* Resultados do YouTube — um card único com prévia, baixar e progresso */
+.yt-resultado-item{
+    margin-bottom:9px;
+    padding:9px;
+    border-radius:11px;
+    background:
+        linear-gradient(rgba(7,7,7,.5),rgba(7,7,7,.5)) padding-box,
+        linear-gradient(135deg,rgba(255,47,158,.6),rgba(43,255,168,.55)) border-box;
+    border:1px solid transparent;
+}
+.yt-resultado{
+    display:flex;
+    align-items:center;
+    gap:9px;
+}
+.yt-resultado-thumb{
+    position:relative;
+    flex:0 0 84px;
+    height:56px;
+    border-radius:7px;
+    overflow:hidden;
+    background:#0a0a0a;
+}
+.yt-resultado-thumb img{width:100%;height:100%;object-fit:cover;}
+.yt-resultado-dur{
+    position:absolute;right:3px;bottom:3px;
+    font-family:'Orbitron',sans-serif;font-size:7px;padding:1px 4px;
+    border-radius:3px;background:rgba(0,0,0,.82);
+}
+.yt-resultado-info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;}
+.yt-resultado-nome{
+    font-size:12px;font-weight:600;line-height:1.25;display:-webkit-box;
+    -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.yt-resultado-canal{font-size:10px;color:rgba(255,255,255,.55);margin-top:2px;}
+
+/* botões de ação do resultado: PRÉVIA e BAIXAR */
+.yt-item-acoes{display:flex;gap:7px;margin-top:8px;}
+.yt-acao{
+    flex:1;height:32px;border-radius:8px;
+    background:
+        linear-gradient(#000,#000) padding-box,
+        linear-gradient(135deg,#ff2f9e,#2bffa8) border-box;
+    color:#fff;
+    border:2px solid transparent;
+    font-family:'Rajdhani',sans-serif;font-weight:700;
+    font-size:11px;letter-spacing:1px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:5px;
+}
+.yt-acao:active{background:rgba(255,47,158,.22);transform:scale(.98);}
+.yt-acao:disabled{opacity:.42;cursor:wait;}
+.yt-acao-previa.tocando{background:linear-gradient(135deg,#ff2f9e,#2bffa8);color:#000;}
+
+/* progresso DESTE vídeo, junto ao card escolhido */
+.yt-item-progresso{margin-top:8px;padding:8px 9px;border-radius:9px;background:rgba(0,0,0,.55);border:1px solid rgba(43,255,168,.32);}
+.yt-item-progresso[hidden]{display:none;}
+.yt-item-progresso-topo{display:flex;justify-content:space-between;gap:8px;font-size:9px;font-family:'Orbitron',sans-serif;letter-spacing:.4px;color:rgba(255,255,255,.85);margin-bottom:6px;}
+.yt-item-barra{height:6px;border-radius:999px;background:rgba(255,255,255,.16);overflow:hidden;}
+.yt-item-barra-fill{height:100%;width:0;background:linear-gradient(90deg,#ff2f9e,#2bffa8);border-radius:999px;box-shadow:0 0 10px rgba(43,255,168,.5),0 0 16px rgba(255,47,158,.32);transition:width .25s;}
+.yt-item-etapa{font-size:9.5px;color:rgba(255,255,255,.7);margin-top:5px;}
+.yt-item-progresso.ok{border-color:rgba(43,255,168,.6);}
+.yt-item-progresso.erro{border-color:rgba(255,47,158,.6);}
+
+/* POP-UP DE QUALIDADES — ao acionar ⬇ abre só a lista de qualidades */
+.modal{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:18px;}
+.modal[hidden]{display:none;}
+.modal-fundo{position:absolute;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);}
+.modal-caixa{
+    position:relative;width:100%;max-width:340px;max-height:78vh;overflow-y:auto;
+    padding:13px 12px 12px;border-radius:14px;
+    background:
+        linear-gradient(rgba(8,8,8,.96),rgba(8,8,8,.96)) padding-box,
+        linear-gradient(135deg,#ff2f9e,#2bffa8) border-box;
+    border:1px solid transparent;
+    box-shadow:0 0 26px rgba(0,0,0,.8);
+}
+.modal-caixa::-webkit-scrollbar{width:0;}
+.modal-cabecalho{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.modal-titulo{
+    font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:1.4px;color:#fff;
+}
+.modal-nome{font-size:11px;color:rgba(255,255,255,.6);margin-top:3px;line-height:1.3;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.modal-fechar{
+    flex:0 0 30px;height:30px;border-radius:50%;
+    border:1px solid transparent;
+    background:
+        linear-gradient(rgba(16,16,16,.9),rgba(16,16,16,.9)) padding-box,
+        linear-gradient(135deg,#ff2f9e,#2bffa8) border-box;
+    color:#fff;font-size:13px;line-height:1;cursor:pointer;
+}
+.modal-fechar:active{transform:scale(.94);}
+.modal-opcoes{display:flex;flex-direction:column;gap:8px;}
+.qopc{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:11px 12px;border-radius:10px;width:100%;text-align:left;
+    background:rgba(18,18,18,.92);border:1px solid rgba(43,255,168,.28);
+    color:#fff;cursor:pointer;
+}
+.qopc:active{transform:scale(.99);}
+.qopc.recomendada{border-color:rgba(255,47,158,.75);box-shadow:0 0 14px rgba(255,47,158,.28),0 0 22px rgba(43,255,168,.16);}
+.qopc-res{font-family:'Orbitron',sans-serif;font-weight:700;font-size:15px;}
+.qopc-tag{
+    font-family:'Orbitron',sans-serif;font-size:7.5px;letter-spacing:.6px;
+    padding:3px 7px;border-radius:4px;white-space:nowrap;
+    background:rgba(255,47,158,.22);border:1px solid rgba(43,255,168,.45);
+}
+.qopc.recomendada .qopc-tag{background:linear-gradient(135deg,#ff2f9e,#2bffa8);color:#000;border-color:transparent;}
+.qopc:disabled,.modal-fechar:disabled{opacity:.45;cursor:wait;}
+.modal-erro{font-size:11px;color:#ff4f9e;text-align:center;padding:10px;}
+
+/* BARRA DE PROGRESSO — fica junto ao card do vídeo escolhido */
+.yt-inline-progress{margin-top:8px;padding:8px 9px;border-radius:9px;background:rgba(0,0,0,.5);border:1px solid rgba(43,255,168,.32);}
+.yt-inline-progress[hidden]{display:none;}
+.yt-inline-progress-head{display:flex;justify-content:space-between;gap:8px;font-size:9px;color:rgba(255,255,255,.8);margin-bottom:6px;font-family:'Orbitron',sans-serif;letter-spacing:.4px;}
+.yt-inline-bar{height:6px;border-radius:999px;background:rgba(255,255,255,.16);overflow:hidden;}
+.yt-inline-bar-fill{height:100%;width:0;background:linear-gradient(90deg,#ff2f9e,#2bffa8);border-radius:999px;box-shadow:0 0 10px rgba(43,255,168,.5),0 0 16px rgba(255,47,158,.32);transition:width .25s;}
+.yt-inline-progress.ok{border-color:rgba(43,255,168,.6);}
+.yt-inline-progress.erro{border-color:rgba(255,47,158,.6);}
+
+/* ---------------------------------------------------------
+   PLAYER EM LARGURA TOTAL (sem margem/padding nas laterais)
+   O visor está dentro de .topo, que tem margem 10px e padding
+   12px: os deslocamentos negativos (10+12) devolvem o player às
+   bordas da tela.
+--------------------------------------------------------- */
+.topo .visor{
+    width:calc(100% + 44px);
+    margin-left:-22px;
+    margin-right:-22px;
+    border-left:0;
+    border-right:0;
+    border-radius:0;
+}
+
+/* ---------------------------------------------------------
+   RODAPÉ
+--------------------------------------------------------- */
+.rodape{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:7px 16px calc(7px + env(safe-area-inset-bottom));
+    background:rgba(5,5,5,.72);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    border-top:1px solid rgba(43,255,168,.22);
+}
+.rodape-marca{
+    font-family:'Orbitron',sans-serif;
+    font-size:9px;
+    letter-spacing:2px;
+    color:transparent;
+    background:linear-gradient(90deg,#ff2f9e,#2bffa8);
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+}
+.rodape-autor{font-size:10px;letter-spacing:1px;color:rgba(255,255,255,.5);}
+
+/* Pop-up de apoio Pix */
+.apoio-modal{z-index:70;}
+.apoio-caixa{max-width:330px;padding:22px 20px 18px;text-align:center;border-radius:20px;animation:apoioEntrar .22s ease-out both;}
+@keyframes apoioEntrar{from{opacity:0;transform:translateY(8px) scale(.97);}to{opacity:1;transform:translateY(0) scale(1);}}
+.apoio-caixa .modal-fechar{position:absolute;right:10px;top:10px;flex:0 0 44px;width:44px;height:44px;font-size:15px;}
+.apoio-selo{
+    width:48px;height:48px;margin:0 auto 12px;border-radius:50%;
+    display:grid;place-items:center;font-size:22px;
+    background:linear-gradient(rgba(8,8,8,.96),rgba(8,8,8,.96)) padding-box,linear-gradient(135deg,#ff2f9e,#2bffa8) border-box;
+    border:1px solid transparent;box-shadow:0 0 20px rgba(255,47,158,.18),0 0 26px rgba(43,255,168,.12);
+}
+.apoio-titulo{
+    font-family:'Orbitron',sans-serif;font-size:13px;letter-spacing:1.4px;
+    color:#fff;margin-bottom:9px;
+}
+.apoio-texto{font-family:'Rajdhani',sans-serif;font-size:15px;line-height:1.35;color:rgba(255,255,255,.76);margin:0 0 15px;}
+.apoio-chave-label{font-family:'Orbitron',sans-serif;font-size:8px;letter-spacing:1.2px;color:rgba(255,255,255,.55);margin-bottom:6px;}
+.apoio-chave{
+    padding:10px 8px;border-radius:9px;word-break:break-all;
+    background:rgba(0,0,0,.72);border:1px solid rgba(43,255,168,.35);
+    color:#fff;font-family:monospace;font-size:12px;letter-spacing:.2px;
+}
+.apoio-copiar{
+    width:100%;min-height:40px;margin-top:12px;border-radius:10px;
+    border:1px solid transparent;
+    background:linear-gradient(135deg,#ff2f9e,#2bffa8) padding-box,linear-gradient(135deg,#ff2f9e,#2bffa8) border-box;
+    color:#050505;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;letter-spacing:1px;
+}
+.apoio-copiar:active{transform:scale(.98);}
+.rodape{position:relative;}
+.rodape-apoio{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    min-height:24px;padding:2px 8px;border-radius:999px;
+    background:linear-gradient(rgba(5,5,5,.9),rgba(5,5,5,.9)) padding-box,linear-gradient(135deg,#ff2f9e,#2bffa8) border-box;
+    border:1px solid transparent;color:#fff;font-family:'Rajdhani',sans-serif;
+    font-size:9.5px;font-weight:700;letter-spacing:.5px;white-space:nowrap;
+}
+.rodape-apoio:active{transform:translate(-50%,-50%) scale(.96);}
+
+/* aviso flutuante */
+.aviso{
+    position:fixed;
+    left:50%;
+    bottom:74px;
+    transform:translateX(-50%);
+    max-width:88%;
+    padding:9px 15px;
+    border-radius:999px;
+    background:rgba(0,0,0,.9);
+    border:1px solid rgba(255,47,158,.5);
+    font-size:11px;
+    text-align:center;
+    z-index:50;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .25s;
+}
+.aviso.mostra{opacity:1;}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+    <!-- ===================== TOPO ===================== -->
+    <div class="topo">
+        <div class="topo-linha">
+            <div class="topo-logo">NEXUS VIDEO</div>
+        </div>
+
+        <div class="visor" id="visor">
+            <video id="player" playsinline preload="metadata"></video>
+            <img class="visor-poster" id="visorPoster" src="/img/visor-transicao.jpg" alt="" aria-hidden="true">
+            <div class="visor-vazio" id="visorVazio">NENHUM VÍDEO<br>SELECIONE UM VÍDEO</div>
+        </div>
+
+        <div class="visor-info">
+            <div class="visor-titulo" id="visorTitulo">NENHUM VÍDEO</div>
+            <div class="visor-sub" id="visorSub">NEXUS VIDEO</div>
+        </div>
+
+        <div class="transporte">
+            <button class="ctl" id="btnAnterior" title="Anterior">◀</button>
+            <button class="ctl principal" id="btnPlay" title="Tocar">▶</button>
+            <button class="ctl" id="btnProximo" title="Próximo">▶</button>
+        </div>
+
+        <div class="tempo-linha">
+            <span id="tempoAtual">0:00</span>
+            <div class="trilha" id="trilha" role="slider" tabindex="0" aria-label="Linha do tempo do vídeo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="trilha-fill" id="trilhaFill"><span class="trilha-bolinha" aria-hidden="true"></span></div></div>
+            <span id="tempoTotal">0:00</span>
+        </div>
+    </div>
+
+    <!-- ===================== ABAS ===================== -->
+    <div class="abas">
+        <button class="aba ativa" id="abaBiblioteca">VÍDEOS</button>
+        <button class="aba" id="abaYouTube">YOUTUBE</button>
+    </div>
+
+    <!-- ===================== CONTEÚDO ===================== -->
+    <div class="conteudo" id="conteudo">
+
+        <!-- ---------- biblioteca ---------- -->
+        <div class="painel ativo" id="painelBiblioteca">
+            <div class="grade" id="grade"></div>
+        </div>
+
+        <!-- ---------- youtube ---------- -->
+        <div class="painel" id="painelYouTube">
+            <div class="yt-titulo">YOUTUBE DOWNLOAD</div>
+
+            <div class="yt-busca">
+                <input id="ytTermo" type="text" placeholder="Nome ou link do vídeo"
+                       autocomplete="off" autocorrect="off" spellcheck="false">
+                <button id="ytBuscar" title="Pesquisar">⌕</button>
+            </div>
+
+            <div class="yt-status" id="ytStatus">Pesquise um vídeo para baixar</div>
+
+            <div id="ytResultados"></div>
+        </div>
+
+    </div>
+
+    <!-- ===================== RODAPÉ ===================== -->
+    <div class="rodape">
+        <span class="rodape-marca">NEXUS VIDEO</span>
+        <button class="rodape-apoio" id="btnApoiar" type="button">❤️ APOIAR</button>
+        <span class="rodape-autor">BY: LEANDRO</span>
+    </div>
+</div>
+
+<!-- POP-UP PIX: apoio voluntário ao projeto -->
+<div class="modal apoio-modal" id="modalApoio" hidden>
+    <div class="modal-fundo" id="apoioFundo"></div>
+    <div class="modal-caixa apoio-caixa" role="dialog" aria-modal="true" aria-labelledby="apoioTitulo">
+        <button class="modal-fechar" id="apoioFechar" type="button" title="Fechar" aria-label="Fechar">✕</button>
+        <div class="apoio-selo" aria-hidden="true">❤️</div>
+        <div class="apoio-titulo" id="apoioTitulo">APOIE O PROJETO</div>
+        <p class="apoio-texto">Se o NEXUS VIDEO é útil para você, qualquer ajuda via Pix contribui para manter o projeto e trazer novas melhorias. Obrigado pelo apoio! ✨</p>
+        <div class="apoio-chave-label">CHAVE PIX</div>
+        <div class="apoio-chave" id="chavePix">e0147a61-18b6-4cf0-972e-74d3cf38c90a</div>
+        <button class="apoio-copiar" id="btnCopiarPix" type="button">📋 COPIAR CHAVE PIX</button>
+    </div>
+</div>
+
+<!-- POP-UP DE QUALIDADES: só a lista do que dá para baixar -->
+<div class="modal" id="modalQualidades" hidden>
+    <div class="modal-fundo" id="modalFundo"></div>
+    <div class="modal-caixa">
+        <div class="modal-cabecalho">
+            <div>
+                <div class="modal-titulo">QUALIDADES DISPONÍVEIS</div>
+                <div class="modal-nome" id="modalNome"></div>
+            </div>
+            <button class="modal-fechar" id="modalFechar" title="Fechar">✕</button>
+        </div>
+        <div class="modal-opcoes" id="modalOpcoes"></div>
+    </div>
+</div>
+
+<div class="aviso" id="aviso"></div>
+
+<script>
+/* =========================================================
+   ESTADO
+========================================================= */
+let lib={total:0,videos:[],pastas:[]};
+let fila=[];
+let indiceFila=-1;
+let buscaResultados=[];
+let videoSelecionado=null;
+let opcoesAtuais=[];
+let ytPollTimer=null;
+const player=document.getElementById('player');
+const posterVisor=document.getElementById('visorPoster');
+const arteVisor='/img/visor-transicao.jpg';
+let posterVisorToken=0;
+let posterVisorTimer=null;
+let posterVisorFrameCallback=null;
+let posterVisorRaf=null;
+let posterVisorDataHandler=null;
+let apresentacaoNovoQuadro=false;
+posterVisor.addEventListener('load',()=>posterVisor.classList.remove('desvanecer'));
+posterVisor.addEventListener('error',()=>{posterVisor.hidden=true;});
+
+const $=id=>document.getElementById(id);
+
+/* =========================================================
+   AVISO NA TELA
+========================================================= */
+let avisoTimer=null;
+function avisar(txt,ms){
+    const el=$('aviso');
+    el.textContent=txt;
+    el.classList.add('mostra');
+    if(avisoTimer)clearTimeout(avisoTimer);
+    avisoTimer=setTimeout(()=>el.classList.remove('mostra'),ms||2200);
+}
+
+/* =========================================================
+   UTILIDADES
+========================================================= */
+function fmtTempo(s){
+    if(!isFinite(s)||s<0)s=0;
+    const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),seg=Math.floor(s%60);
+    if(h>0)return h+':'+String(m).padStart(2,'0')+':'+String(seg).padStart(2,'0');
+    return m+':'+String(seg).padStart(2,'0');
+}
+function escaparHtml(t){
+    return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtTamanho(bytes){
+    if(!bytes||bytes<=0)return '';
+    const mb=bytes/(1024*1024);
+    if(mb>=1024)return (mb/1024).toFixed(1)+' GB';
+    return Math.round(mb)+' MB';
+}
+
+/* =========================================================
+   BIBLIOTECA
+========================================================= */
+async function carregarBiblioteca(){
+    try{
+        const r=await fetch('/api/library?t='+Date.now());
+        lib=await r.json();
+    }catch(e){return;}
+    renderGrade();
+    carregarUltimoNoVisor();
+}
+
+/* O visor nunca fica vazio nem preto: ao abrir o app mostra o vídeo mais
+   recente já com a miniatura visível. O quadro decodificado do <video> não se
+   sustenta no WebView enquanto não há reprodução (ele volta a preto), então a
+   miniatura fica como camada estável e sai quando o vídeo começa a tocar. */
+function carregarUltimoNoVisor(){
+    if(videoSelecionado||previaIndice>=0)return;   /* usuário já escolheu algo */
+    const v=lib.videos[0];
+    if(!v){
+        $('visorVazio').style.display='';
+        $('visorTitulo').textContent='NENHUM VÍDEO';
+        $('visorSub').textContent='NEXUS VIDEO';
+        return;
+    }
+    fila=lib.videos.slice();
+    indiceFila=0;
+    videoSelecionado=v;
+    player.src=v.url;
+    player.load();
+    atualizarBotaoPlay(false);
+    mostrarPoster(v.id);
+    $('visorVazio').style.display='none';
+    $('visorTitulo').textContent=v.nome.replace(/\.[^.]+$/,'');
+    const res=(v.largura>0&&v.altura>0)?(' · '+v.altura+'p'):'';
+    $('visorSub').textContent='NEXUS VIDEO'+res+' · toque em ▶ para assistir';
+}
+
+/* Arte fixa usada como capa no estado parado e entre fontes. Ela só sai com
+   suavidade quando o navegador confirma um novo quadro do vídeo em reprodução. */
+function mostrarArteTransicao(){
+    posterVisorToken++;
+    apresentacaoNovoQuadro=false;
+    if(posterVisorTimer){clearTimeout(posterVisorTimer);posterVisorTimer=null;}
+    if(posterVisorFrameCallback!==null&&player.cancelVideoFrameCallback){player.cancelVideoFrameCallback(posterVisorFrameCallback);posterVisorFrameCallback=null;}
+    if(posterVisorRaf!==null){cancelAnimationFrame(posterVisorRaf);posterVisorRaf=null;}
+    posterVisor.classList.remove('desvanecer');
+    if(posterVisor.src!==new URL(arteVisor,location.href).href)posterVisor.src=arteVisor;
+    posterVisor.hidden=false;
+}
+function ocultarArteDepoisDoQuadro(){
+    if(apresentacaoNovoQuadro||player.paused||player.readyState<2)return;
+    apresentacaoNovoQuadro=true;
+    const token=posterVisorToken;
+    const iniciarFade=()=>{
+        if(token!==posterVisorToken||player.paused)return;
+        posterVisorFrameCallback=null;posterVisorRaf=null;
+        posterVisor.classList.add('desvanecer');
+        posterVisorTimer=setTimeout(()=>{
+            if(token!==posterVisorToken||!apresentacaoNovoQuadro)return;
+            posterVisor.hidden=true;
+            posterVisor.classList.remove('desvanecer');
+            posterVisorTimer=null;
+        },380);
+    };
+    if(player.requestVideoFrameCallback){
+        posterVisorFrameCallback=player.requestVideoFrameCallback(iniciarFade);
+    }else{
+        posterVisorRaf=requestAnimationFrame(iniciarFade);
+    }
+}
+function mostrarPoster(id){mostrarArteTransicao();}
+function esconderPoster(){mostrarArteTransicao();}
+
+
+function renderGrade(){
+    const g=$('grade');
+    if(!lib.videos.length){
+        g.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:28px 10px;'
+            +'color:rgba(255,255,255,.5);font-size:12px;line-height:1.7">'
+            +'Nenhum vídeo encontrado.<br>Baixe pelo YouTube ou coloque vídeos em Movies/NexusVideo</div>';
+        return;
+    }
+    g.innerHTML=lib.videos.map((v,i)=>{
+        const res=(v.largura>0&&v.altura>0)?(v.altura+'p'):'';
+        return '<article class="vcard" data-i="'+i+'">'
+            +'<img class="vcard-thumb" loading="lazy" src="/thumb/'+v.id+'" alt="" '
+            +'onerror="this.style.display=\'none\'">'
+            +(res?'<span class="vcard-res">'+res+'</span>':'')
+            +'<span class="vcard-tempo">'+fmtTempo(v.duracao)+'</span>'
+            +'<span class="vcard-nome">'+escaparHtml(v.nome)+'</span>'
+            +'</article>';
+    }).join('');
+    g.querySelectorAll('.vcard').forEach(c=>{
+        c.onclick=()=>tocarDaLista(parseInt(c.dataset.i,10));
+    });
+}
+
+function tocarDaLista(i){
+    pararPrevia();          /* vídeo da biblioteca não é mais prévia */
+    fila=lib.videos.slice();
+    indiceFila=i;
+    tocarIndice();
+}
+
+function tocarIndice(){
+    const v=fila[indiceFila];
+    if(!v)return;
+    mostrarArteTransicao();
+    videoSelecionado=v;
+    player.src=v.url;
+    player.play().catch(()=>atualizarBotaoPlay(false));
+    atualizarBotaoPlay(true);
+    $('visorVazio').style.display='none';
+    $('visorTitulo').textContent=v.nome.replace(/\.[^.]+$/,'');
+    const res=(v.largura>0&&v.altura>0)?(' · '+v.altura+'p'):'';
+    $('visorSub').textContent='NEXUS VIDEO'+res;
+}
+
+function atualizarBotaoPlay(tocando){
+    $('btnPlay').textContent=tocando?'❚❚':'▶';
+    topoReproduzindo(tocando);
+    avisarNativo(tocando);
+}
+let ultimoAvisoNativo=0;
+
+/* =========================================================
+   SEGUNDO PLANO E TELA BLOQUEADA
+
+   O WebView não publica MediaSession para o Android, então quem mantém o
+   vídeo vivo fora da tela (e desenha a notificação/tela bloqueada) é o
+   PlayerService nativo. Aqui só informamos o que está tocando e obedecemos
+   os comandos que voltam do sistema.
+========================================================= */
+function textoVisor(){
+    return ($('visorTitulo').textContent||'').trim();
+}
+function subVisor(){
+    return ($('visorSub').textContent||'').trim();
+}
+function posicaoMs(){
+    const s=player.currentTime;
+    return (isFinite(s)&&s>0)?Math.round(s*1000):0;
+}
+function duracaoMs(){
+    const d=player.duration;
+    return (isFinite(d)&&d>0)?Math.round(d*1000):0;
+}
+function avisarNativo(tocando){
+    const ponte=window.AndroidApp;
+    if(!ponte||typeof ponte.tocando!=='function')return;
+    /* Sem vídeo carregado nem prévia: nada para mostrar na tela bloqueada. */
+    if(!videoSelecionado&&previaIndice<0){
+        if(typeof ponte.parado==='function')ponte.parado();
+        return;
+    }
+    try{ponte.tocando(textoVisor(),subVisor(),!!tocando,posicaoMs(),duracaoMs());}catch(e){}
+}
+
+/* Comandos vindos da notificação, da tela bloqueada e dos botões do fone. */
+window.nexusControle=function(acao,valor){
+    switch(acao){
+        case 'toggle':
+            if(!videoSelecionado&&previaIndice<0){avisar('selecione um vídeo');return;}
+            if(player.paused)player.play().then(()=>atualizarBotaoPlay(true))
+                .catch(()=>atualizarBotaoPlay(false));
+            else{player.pause();atualizarBotaoPlay(false);}
+            break;
+        case 'play':
+            if(!player.paused)break;
+            player.play().then(()=>atualizarBotaoPlay(true))
+                .catch(()=>atualizarBotaoPlay(false));
+            break;
+        case 'pause':
+            if(previaIndice>=0){pararPrevia();ytStatus('prévia interrompida','ok');break;}
+            player.pause();atualizarBotaoPlay(false);
+            break;
+        case 'next':
+        case 'prev':
+            if(previaIndice>=0)break;      /* prévia não tem fila */
+            if(acao==='next'&&indiceFila<fila.length-1){indiceFila++;tocarIndice();}
+            if(acao==='prev'&&indiceFila>0){indiceFila--;tocarIndice();}
+            break;
+        case 'seek':
+            if(previaIndice>=0)break;
+            if(isFinite(player.duration)&&valor>=0&&valor<=player.duration*1000){
+                player.currentTime=valor/1000;
+            }
+            break;
+    }
+};
+
+/* Outro app (ou uma ligação) tomou o áudio: pausa de verdade, sem retomar. */
+window.nexusFoco=function(){
+    if(previaIndice>=0)pararPrevia();
+    player.pause();
+    atualizarBotaoPlay(false);
+};
+
+/* Fechamento real do app: nenhum áudio do WebView pode seguir tocando. */
+window.nxPausarTudo=function(){
+    if(typeof ytPararPrevia==='function')ytPararPrevia();
+    try{player.pause();}catch(e){}
+    return true;
+};
+
+/* O desfoque do painel do topo é refeito a cada quadro do <video> e derruba a
+   reprodução para ~35 FPS. Ele só existe quando o vídeo está rodando: parado,
+   o painel fica exatamente como sempre foi. */
+function topoReproduzindo(ativo){
+    const t=document.querySelector('.topo');
+    if(t)t.classList.toggle('tocando',!!ativo);
+}
+
+$('btnPlay').onclick=()=>{
+    if(!videoSelecionado&&previaIndice<0){avisar('selecione um vídeo');return;}
+    if(player.paused){
+        mostrarArteTransicao();
+        player.play().then(()=>{
+            atualizarBotaoPlay(true);
+            if(previaIndice>=0)ytStatus('prévia de vídeo tocando — toque no card para pausar','ok');
+        }).catch(()=>{
+            atualizarBotaoPlay(false);
+            if(previaIndice>=0)ytStatus('não foi possível iniciar a prévia de vídeo','erro');
+        });
+    }
+    else{player.pause();atualizarBotaoPlay(false);}
+};
+$('btnAnterior').onclick=()=>{
+    if(indiceFila>0){indiceFila--;tocarIndice();}
+};
+$('btnProximo').onclick=()=>{
+    if(indiceFila<fila.length-1){indiceFila++;tocarIndice();}
+};
+
+player.addEventListener('timeupdate',()=>{
+    $('tempoAtual').textContent=fmtTempo(player.currentTime);
+    if(player.duration&&isFinite(player.duration)){
+        const progresso=(player.currentTime/player.duration*100);
+        $('trilhaFill').style.width=progresso+'%';
+        $('trilha').setAttribute('aria-valuenow',String(Math.round(progresso)));
+    }
+    /* Repassa a posição ao nativo de vez em quando (a barra da tela bloqueada
+       fica certa após um arraste, sem custo de Intent a cada quadro). */
+    if(!player.paused){
+        const agora=Date.now();
+        if(agora-ultimoAvisoNativo>5000){ultimoAvisoNativo=agora;avisarNativo(true);}
+    }
+});
+player.addEventListener('loadedmetadata',()=>{
+    $('tempoTotal').textContent=fmtTempo(player.duration);
+});
+player.addEventListener('loadeddata',()=>{
+    if(!player.paused&&player.readyState>=2)ocultarArteDepoisDoQuadro();
+});
+player.addEventListener('play',()=>{
+    atualizarBotaoPlay(true);
+    mostrarArteTransicao();
+    topoReproduzindo(true);
+    ocultarArteDepoisDoQuadro();
+});
+player.addEventListener('pause',()=>{
+    atualizarBotaoPlay(false);
+    topoReproduzindo(false);
+    /* O WebView descarta o quadro pausado: mostrar a arte em todas as fontes. */
+    mostrarArteTransicao();
+});
+player.addEventListener('ended',()=>{
+    atualizarBotaoPlay(false);
+    mostrarArteTransicao();
+    if(previaIndice>=0){
+        limparCardTocando();
+        $('visorSub').textContent='NEXUS VIDEO · prévia encerrada';
+        ytStatus('prévia de vídeo encerrada','ok');
+        return;
+    }
+    if(indiceFila<fila.length-1){indiceFila++;tocarIndice();}
+});
+player.addEventListener('error',()=>{
+    mostrarArteTransicao();
+    if(previaIndice<0)return;
+    atualizarBotaoPlay(false);
+    ytStatus('não foi possível reproduzir o vídeo desta prévia','erro');
+    limparCardTocando();
+});
+
+/* Seek responsivo: toque/clique em qualquer ponto e arraste o marcador. */
+const trilha=$('trilha');
+let ponteiroTimeline=null;
+function posicionarTimeline(clientX){
+    if(!player.duration||!isFinite(player.duration))return;
+    const r=trilha.getBoundingClientRect();
+    const p=Math.max(0,Math.min(1,(clientX-r.left)/r.width));
+    player.currentTime=p*player.duration;
+    $('trilhaFill').style.width=(p*100)+'%';
+    trilha.setAttribute('aria-valuenow',String(Math.round(p*100)));
+}
+trilha.addEventListener('pointerdown',e=>{
+    if(e.button!==undefined&&e.button!==0)return;
+    if(!player.duration||!isFinite(player.duration))return;
+    e.preventDefault();
+    ponteiroTimeline=e.pointerId;
+    trilha.setPointerCapture(e.pointerId);
+    posicionarTimeline(e.clientX);
+});
+trilha.addEventListener('pointermove',e=>{
+    if(ponteiroTimeline!==e.pointerId)return;
+    e.preventDefault();
+    posicionarTimeline(e.clientX);
+});
+function soltarPonteiroTimeline(e){
+    if(ponteiroTimeline!==e.pointerId)return;
+    ponteiroTimeline=null;
+}
+trilha.addEventListener('pointerup',soltarPonteiroTimeline);
+trilha.addEventListener('pointercancel',soltarPonteiroTimeline);
+trilha.addEventListener('lostpointercapture',soltarPonteiroTimeline);
+trilha.addEventListener('keydown',e=>{
+    if(!player.duration||!isFinite(player.duration))return;
+    let destino=player.currentTime;
+    if(e.key==='ArrowRight')destino+=Math.max(5,player.duration*.01);
+    else if(e.key==='ArrowLeft')destino-=Math.max(5,player.duration*.01);
+    else if(e.key==='Home')destino=0;
+    else if(e.key==='End')destino=player.duration;
+    else return;
+    e.preventDefault();
+    player.currentTime=Math.max(0,Math.min(player.duration,destino));
+});
+
+/* =========================================================
+   ABAS
+========================================================= */
+function trocarAba(qual){
+    const bib=qual==='biblioteca';
+    $('abaBiblioteca').classList.toggle('ativa',bib);
+    $('abaYouTube').classList.toggle('ativa',!bib);
+    $('painelBiblioteca').classList.toggle('ativo',bib);
+    $('painelYouTube').classList.toggle('ativo',!bib);
+    $('conteudo').scrollTop=0;
+}
+$('abaBiblioteca').onclick=()=>trocarAba('biblioteca');
+$('abaYouTube').onclick=()=>trocarAba('youtube');
+
+/* =========================================================
+   YOUTUBE — PESQUISA
+========================================================= */
+function ytStatus(txt,tipo){
+    const el=$('ytStatus');
+    el.textContent=txt;
+    el.className='yt-status'+(tipo?' '+tipo:'');
+}
+
+$('ytBuscar').onclick=()=>pesquisar();
+$('ytTermo').addEventListener('keydown',e=>{if(e.key==='Enter')pesquisar();});
+
+const RE_LINK=/https?:\/\/[^\s]*(youtube\.com|youtu\.be)[^\s]*/i;
+
+async function pesquisar(){
+    const bruto=$('ytTermo').value.trim();
+    if(!bruto){ytStatus('digite o nome do vídeo','erro');return;}
+
+    /* se colou um link, vai direto para as qualidades */
+    const link=bruto.match(RE_LINK);
+    if(link){abrirQualidades(link[0]);return;}
+
+    tokenQualidades++;
+    pararPrevia();
+    ytStatus('pesquisando…');
+    $('ytResultados').innerHTML='';
+    try{
+        const r=await fetch('/api/youtube/search?q='+encodeURIComponent(bruto));
+        const d=await r.json();
+        if(!r.ok||!d.ok){ytStatus(d.erro||'não foi possível pesquisar','erro');return;}
+        buscaResultados=d.resultados||[];
+        renderResultados();
+        ytStatus(buscaResultados.length
+            ? 'PRÉVIA para ver antes · BAIXAR para escolher a qualidade'
+            : 'nenhum resultado encontrado');
+    }catch(e){
+        ytStatus('erro de rede na pesquisa','erro');
+    }
+}
+
+function renderResultados(){
+    $('ytResultados').innerHTML=buscaResultados.map((v,i)=>
+        '<div class="yt-resultado-item" data-i="'+i+'" data-url="'+escaparHtml(v.url)+'">'
+        +'<div class="yt-resultado" data-i="'+i+'">'
+        +'<div class="yt-resultado-thumb">'
+        +(v.capa?'<img loading="lazy" src="'+escaparHtml(v.capa)+'" alt="">':'')
+        +(v.duracao?'<span class="yt-resultado-dur">'+escaparHtml(v.duracao)+'</span>':'')
+        +'</div>'
+        +'<div class="yt-resultado-info">'
+        +'<div class="yt-resultado-nome">'+escaparHtml(v.titulo)+'</div>'
+        +'<div class="yt-resultado-canal">'+escaparHtml(v.canal)+'</div>'
+        +'</div>'
+        +'</div>'
+        +'<div class="yt-item-acoes">'
+        +'<button class="yt-acao yt-acao-previa" type="button">▶ PRÉVIA</button>'
+        +'<button class="yt-acao yt-acao-baixar" type="button">⬇ BAIXAR</button>'
+        +'</div>'
+        +'<div class="yt-item-progresso" hidden>'
+        +'<div class="yt-item-progresso-topo"><span class="yt-item-qual"></span><span class="yt-item-pct">0%</span></div>'
+        +'<div class="yt-item-barra"><div class="yt-item-barra-fill"></div></div>'
+        +'<div class="yt-item-etapa">iniciando…</div>'
+        +'</div>'
+        +'</div>').join('');
+
+    $('ytResultados').querySelectorAll('.yt-resultado-item').forEach(item=>{
+        const i=Number(item.dataset.i);
+        item.querySelector('.yt-acao-previa').onclick=()=>tocarPrevia(i);
+        item.querySelector('.yt-acao-baixar').onclick=()=>abrirQualidades(buscaResultados[i].url,i);
+    });
+}
+
+/* =========================================================
+   PRÉVIA NO PLAYER PRINCIPAL
+   O stream progressivo selecionado contém imagem + som.
+   Tocar de novo no mesmo card alterna pausa/retomada.
+========================================================= */
+let previaIndice=-1;
+let previaToken=0;
+
+async function tocarPrevia(indice){
+    if(downloadEmAndamento)return;
+    const v=buscaResultados[indice];
+    if(!v)return;
+
+    if(previaIndice===indice){
+        if(player.paused)player.play().catch(()=>atualizarBotaoPlay(false));
+        else player.pause();
+        return;
+    }
+
+    const meuToken=++previaToken;
+    tokenQualidades++;
+    pararVideoAnterior();
+    previaIndice=indice;
+    marcarCardTocando(indice);
+    $('visorVazio').style.display='none';
+    $('visorTitulo').textContent='PRÉVIA · '+v.titulo;
+    $('visorSub').textContent='NEXUS VIDEO · carregando vídeo';
+    ytStatus('carregando vídeo e áudio de "'+v.titulo+'"…');
+
+    try{
+        const r=await fetch('/api/youtube/previa',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({url:v.url})
+        });
+        const d=await r.json();
+        if(meuToken!==previaToken)return;
+        if(!r.ok||!d.ok){
+            ytStatus(d.erro||'prévia de vídeo indisponível','erro');
+            limparCardTocando();
+            return;
+        }
+        /* Stream progressivo: imagem + áudio juntos; o endpoint local entrega Range. */
+        player.src='/api/youtube/media?u='+encodeURIComponent(d.url);
+        player.load();
+        try{
+            await player.play();
+            if(meuToken!==previaToken)return;
+            atualizarBotaoPlay(true);
+            $('visorSub').textContent='NEXUS VIDEO · prévia com imagem e som';
+            ytStatus('prévia de vídeo tocando — toque no card para pausar','ok');
+        }catch(e){
+            if(meuToken!==previaToken)return;
+            atualizarBotaoPlay(false);
+            $('visorSub').textContent='NEXUS VIDEO · toque em ▶ para iniciar a prévia';
+            ytStatus('toque em ▶ no player para iniciar o vídeo','erro');
+        }
+    }catch(e){
+        if(meuToken!==previaToken)return;
+        ytStatus('erro de rede ao carregar a prévia de vídeo','erro');
+        limparCardTocando();
+    }
+}
+
+function marcarCardTocando(indice){
+    $('ytResultados').querySelectorAll('.yt-resultado-item').forEach((item,i)=>{
+        item.querySelector('.yt-acao-previa').classList.toggle('tocando',i===indice);
+        item.querySelector('.yt-acao-previa').textContent=(i===indice)?'❚❚ PRÉVIA':'▶ PRÉVIA';
+    });
+}
+
+function pararVideoAnterior(){
+    player.pause();
+    player.removeAttribute('src');
+    player.load();
+    mostrarArteTransicao();
+    atualizarBotaoPlay(false);
+}
+
+function limparCardTocando(){
+    previaIndice=-1;
+    marcarCardTocando(-1);
+}
+
+/* Biblioteca e ações de download encerram a prévia pendente/ativa. */
+function pararPrevia(){
+    previaToken++;
+    if(previaIndice>=0){
+        pararVideoAnterior();
+        limparCardTocando();
+        /* sem reprodução o player não segura imagem: volta a miniatura do
+           vídeo da biblioteca (se houver um carregado) */
+        if(videoSelecionado&&videoSelecionado.id)mostrarPoster(videoSelecionado.id);
+    }
+}
+
+/* =========================================================
+   YOUTUBE — POP-UP DE QUALIDADES (só a lista do que dá p/ baixar)
+========================================================= */
+let tokenQualidades=0;
+let urlAtual=null, indiceAtual=-1;
+
+function fecharModal(){
+    $('modalQualidades').hidden=true;
+    $('modalOpcoes').innerHTML='';
+    travarModal(false);
+}
+function travarModal(travado){
+    document.querySelectorAll('#modalOpcoes .qopc,#modalFechar').forEach(el=>{el.disabled=travado;});
+}
+$('modalFechar').onclick=fecharModal;
+$('modalFundo').onclick=()=>{if(!downloadEmAndamento)fecharModal();};
+
+/* Apoio Pix */
+const CHAVE_PIX='e0147a61-18b6-4cf0-972e-74d3cf38c90a';
+function abrirApoio(){
+    $('modalApoio').hidden=false;
+    $('apoioFechar').focus();
+}
+function fecharApoio(){ $('modalApoio').hidden=true; }
+$('btnApoiar').onclick=abrirApoio;
+$('apoioFechar').onclick=fecharApoio;
+$('apoioFundo').onclick=fecharApoio;
+document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&!$('modalApoio').hidden)fecharApoio();
+});
+$('btnCopiarPix').onclick=async()=>{
+    try{
+        if(window.AndroidApp&&typeof AndroidApp.copiarTextoPix==='function'){
+            if(AndroidApp.copiarTextoPix(CHAVE_PIX)){avisar('chave Pix copiada ❤️');return;}
+        }
+        if(navigator.clipboard&&window.isSecureContext){
+            await navigator.clipboard.writeText(CHAVE_PIX);
+        }else{
+            const campo=document.createElement('textarea');
+            campo.value=CHAVE_PIX;campo.setAttribute('readonly','');
+            campo.style.cssText='position:fixed;left:-9999px;top:0;opacity:0;';
+            document.body.appendChild(campo);campo.select();campo.setSelectionRange(0,campo.value.length);
+            const copiou=document.execCommand('copy');campo.remove();
+            if(!copiou)throw new Error('clipboard indisponível');
+        }
+        avisar('chave Pix copiada ❤️');
+    }catch(e){avisar('não foi possível copiar a chave Pix');}
+};
+
+async function abrirQualidades(url,indice){
+    if(downloadEmAndamento)return;
+    const token=++tokenQualidades;
+    urlAtual=url;
+    indiceAtual=Number.isInteger(indice)?indice:-1;
+
+    $('modalQualidades').hidden=false;
+    travarModal(true);
+    $('modalNome').textContent=indiceAtual>=0
+        ?(buscaResultados[indiceAtual]||{}).titulo||''
+        :'';
+    $('modalOpcoes').innerHTML='<div class="modal-erro">carregando qualidades…</div>';
+
+    try{
+        const r=await fetch('/api/youtube/qualidades',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({url:url})
+        });
+        const d=await r.json();
+        if(token!==tokenQualidades)return;
+        if(!r.ok||!d.ok){
+            $('modalOpcoes').innerHTML='<div class="modal-erro">'+escaparHtml(d.erro||'não foi possível ler as qualidades')+'</div>';
+            return;
+        }
+        renderQualidades(d,url,indiceAtual);
+    }catch(e){
+        if(token!==tokenQualidades)return;
+        $('modalOpcoes').innerHTML='<div class="modal-erro">erro de rede ao ler as qualidades</div>';
+    }
+}
+
+function renderQualidades(d,url,indice){
+    opcoesAtuais=d.opcoes||[];
+    if(!opcoesAtuais.length){
+        $('modalOpcoes').innerHTML='<div class="modal-erro">este vídeo não ofereceu opções de download</div>';
+        return;
+    }
+    if(!$('modalNome').textContent) $('modalNome').textContent=d.titulo||'';
+    travarModal(false);
+    const itens=opcoesAtuais.map(o=>
+        '<button class="qopc'+(o.recomendada?' recomendada':'')+'" data-rot="'+escaparHtml(o.rotulo)+'">'
+        +'<span class="qopc-res">'+escaparHtml(o.rotulo)+'</span>'
+        +'<span class="qopc-tag">'+(o.recomendada?'RECOMENDADA':(o.tipo==='direta'?'ARQUIVO ÚNICO':'JUNTA NO FIM'))+'</span>'
+        +'</button>').join('');
+    $('modalOpcoes').innerHTML=itens;
+    $('modalOpcoes').querySelectorAll('.qopc').forEach(el=>{
+        el.onclick=()=>{fecharModal();baixar(url,el.dataset.rot,indice);};
+    });
+}
+
+/* =========================================================
+   YOUTUBE — DOWNLOAD
+   A barra de progresso fica JUNTO ao card do vídeo escolhido.
+========================================================= */
+let baixandoAtual=null;
+let downloadEmAndamento=false;
+
+function travarSeletoresDownload(travado){
+    document.querySelectorAll('.yt-acao,.qopc,#ytBuscar,#ytTermo').forEach(el=>{el.disabled=travado;});
+}
+
+function atualizarProgressoNoCard(d,terminal){
+    if(!baixandoAtual||baixandoAtual.indice<0)return;
+    const box=document.querySelector('.yt-resultado-item[data-i="'+baixandoAtual.indice+'"] .yt-item-progresso');
+    if(!box)return;
+    const pct=terminal==='ok'?100:Math.max(0,Math.min(100,d.percentual||0));
+    box.hidden=false;
+    box.classList.toggle('ok',terminal==='ok');
+    box.classList.toggle('erro',terminal==='erro');
+    box.querySelector('.yt-item-qual').textContent=baixandoAtual.qualidade||'DOWNLOAD';
+    box.querySelector('.yt-item-pct').textContent=Math.round(pct)+'%';
+    box.querySelector('.yt-item-barra-fill').style.width=pct+'%';
+    box.querySelector('.yt-item-etapa').textContent=terminal==='ok'
+        ?'✓ salvo · rodando agora'
+        :terminal==='erro'?(d.erro||'falha no download'):(d.etapa||d.fase||'iniciando…');
+}
+
+async function baixar(url,qualidade,indice){
+    if(downloadEmAndamento){ytStatus('já existe um download em andamento','erro');return;}
+    const idx=Number.isInteger(indice)?indice:-1;
+
+    pararPrevia();
+    downloadEmAndamento=true;
+    baixandoAtual={video:idx>=0?buscaResultados[idx]:null,qualidade:qualidade,indice:idx};
+    travarSeletoresDownload(true);
+    if(ytPollTimer){clearInterval(ytPollTimer);ytPollTimer=null;}
+
+    const box=idx>=0?document.querySelector('.yt-resultado-item[data-i="'+idx+'"] .yt-item-progresso'):null;
+    if(box){
+        box.hidden=false;box.classList.remove('ok','erro');
+        box.querySelector('.yt-item-qual').textContent=qualidade||'DOWNLOAD';
+        box.querySelector('.yt-item-pct').textContent='0%';
+        box.querySelector('.yt-item-barra-fill').style.width='0%';
+        box.querySelector('.yt-item-etapa').textContent='iniciando…';
+    }
+    ytStatus(box?'':'baixando…');
+
+    try{
+        const r=await fetch('/api/youtube',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({url:url,qualidade:qualidade})
+        });
+        const d=await r.json();
+        if(!r.ok||!d.ok){
+            downloadEmAndamento=false;travarSeletoresDownload(false);
+            atualizarProgressoNoCard(d,'erro');
+            ytStatus(idx>=0?'':(d.erro||'não foi possível iniciar'),'erro');
+            return;
+        }
+        acompanhar();
+    }catch(e){
+        downloadEmAndamento=false;travarSeletoresDownload(false);
+        atualizarProgressoNoCard({erro:'erro de rede ao iniciar'},'erro');
+        ytStatus(idx>=0?'':'erro de rede ao iniciar','erro');
+    }
+}
+
+/* Ao concluir, o vídeo baixado entra no player e reproduz sozinho. */
+async function tocarBaixado(){
+    await carregarBiblioteca();
+    const alvo=lib.videos[0];
+    if(!alvo){avisar('vídeo baixado');return;}
+    trocarAba('biblioteca');
+    tocarDaLista(0);
+    avisar('baixado · reproduzindo');
+}
+
+function acompanhar(){
+    if(ytPollTimer)clearInterval(ytPollTimer);
+    ytPollTimer=setInterval(async()=>{
+        let d;
+        try{
+            const r=await fetch('/api/youtube/status?t='+Date.now());
+            d=await r.json();
+        }catch(e){return;}
+        atualizarProgressoNoCard(d,'');
+        if(d.fase==='concluido'){
+            clearInterval(ytPollTimer);ytPollTimer=null;
+            downloadEmAndamento=false;travarSeletoresDownload(false);
+            atualizarProgressoNoCard(d,'ok');
+            ytStatus('');
+            tocarBaixado();          /* entra como autoplayer e reproduz */
+            return;
+        }
+        if(d.fase==='erro'||d.fase==='cancelado'){
+            clearInterval(ytPollTimer);ytPollTimer=null;
+            downloadEmAndamento=false;travarSeletoresDownload(false);
+            atualizarProgressoNoCard(d,'erro');
+            ytStatus(baixandoAtual&&baixandoAtual.indice>=0?'':'✖ '+(d.erro||d.fase),'erro');
+        }
+    },700);
+}
+
+/* =========================================================
+   PONTES DO APP
+========================================================= */
+window.nxPronto=function(){carregarBiblioteca();};
+window.nxAvisoVoltar=function(){avisar('toque em voltar de novo para sair');};
+window.nxLinkRecebido=function(texto){
+    const m=String(texto||'').match(RE_LINK);
+    if(!m)return;
+    trocarAba('youtube');
+    $('ytTermo').value=m[0];
+    abrirQualidades(m[0]);
+};
+
+/* volta do app: recarrega a biblioteca (um download pode ter terminado) */
+document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden){
+        /* O sistema pode ter pausado/avançado o vídeo enquanto a tela estava
+           bloqueada: o próprio estado do player é a fonte da verdade aqui. */
+        atualizarBotaoPlay(!player.paused);
+        carregarBiblioteca();
+    }
+});
+
+/* Nada de pausar o vídeo ao sair da tela: é justamente o que o PlayerService
+   sustenta (segundo plano e tela bloqueada). O áudio só para quando o app é
+   fechado de verdade — aí o nativo chama `nxPausarTudo`. */
+window.addEventListener('pagehide',()=>{atualizarBotaoPlay(!player.paused);});
+
+carregarBiblioteca();
+</script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+plugins {
+    id 'com.android.application'
+}
+
+// ---------------------------------------------------------------- assinatura
+// Chave de release PRÓPRIA deste app (NexusVideo), independente do NEXUS MUSIC.
+// Sem keystore.properties o build cai no debug e o Play Protect marca o APK
+// como "app não confiável".
+def keystoreProps = new Properties()
+def keystoreFile = rootProject.file('keystore.properties')
+def temKeystore = keystoreFile.exists()
+if (temKeystore) {
+    keystoreProps.load(new FileInputStream(keystoreFile))
+}
+
+android {
+    namespace 'com.leo.nexusvideo'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.leo.nexusvideo"
+        minSdk 24
+        targetSdk 34
+        versionCode 22
+        versionName "3.1"
+    }
+
+    signingConfigs {
+        release {
+            if (temKeystore) {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+                enableV1Signing true
+                enableV2Signing true
+                enableV3Signing true
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig temKeystore ? signingConfigs.release : signingConfigs.debug
+        }
+        debug {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    packagingOptions {
+        resources {
+            excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE*', 'META-INF/NOTICE*']
+        }
+    }
+}
+
+dependencies {
+    // Extrai os streams do YouTube (Java puro, sem Python)
+    implementation 'com.github.teamnewpipe:NewPipeExtractor:v0.26.5'
+}
