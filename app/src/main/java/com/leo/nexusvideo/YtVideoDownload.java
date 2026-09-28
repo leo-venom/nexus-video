@@ -141,6 +141,13 @@ public class YtVideoDownload {
         /** Último erro 429 (para backoff global se repetir). */
         private static long ultimo429Ms = 0L;
 
+        /**
+         * Flag que desativa o espaçamento entre requests — usada apenas no caminho
+         * de PRÉVIA (v3.7), onde a latência importa mais que a proteção. O download
+         * continua protegido por `INTERVALO_MIN_MS`.
+         */
+        static volatile boolean semEspera = false;
+
         @Override
         public Response execute(Request request) throws IOException, ReCaptchaException {
             IOException ultimaFalha = null;
@@ -220,6 +227,7 @@ public class YtVideoDownload {
          * de resfriamento — o YouTube pune re-tentativas imediatas.
          */
         private static synchronized void esperarVez() {
+            if (semEspera) return; // prévia: latência > proteção
             long agora = System.currentTimeMillis();
             long intervalo = INTERVALO_MIN_MS;
             if (ultimo429Ms > 0 && agora - ultimo429Ms < 60_000L) intervalo *= 3;
@@ -406,7 +414,17 @@ public class YtVideoDownload {
      * amostra da música com uma fração dos bytes. Caindo para o progressivo se
      * o vídeo não oferecer faixa de áudio separada.</p>
      */
+    /** v3.7: prévia roda sem espaçamento entre requests (latência importa mais). */
     public String previa(String url) {
+        NexusDownloader.semEspera = true;
+        try {
+            return previaInterno(url);
+        } finally {
+            NexusDownloader.semEspera = false;
+        }
+    }
+
+    private String previaInterno(String url) {
         if (url == null || url.trim().isEmpty())
             return "{\"ok\":false,\"erro\":\"Resultado inválido\"}";
 
